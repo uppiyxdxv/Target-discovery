@@ -356,7 +356,7 @@ export default function Page() {
   }), [activeTab, query, visibleJobs])
 
   if (authLoading) {
-    return <main className="auth-shell"><section className="auth-card auth-loading" aria-label="Loading workspace"><div className="loading-route" aria-hidden="true"><span className="route-line"><span className="route-dot" /></span><span className="route-person">●</span><span className="route-home">⌂</span><span className="route-office">▦</span></div><p className="loading-kicker">On the way</p><h1>Getting your workspace ready</h1><p className="loading-copy">A quick walk from home to your workspace.</p><div className="loading-bar" role="progressbar" aria-label="Loading workspace"><span /></div></section></main>
+    return <main className="auth-shell"><section className="auth-card auth-loading" aria-label="Loading workspace"><div className="loading-route" aria-hidden="true"><span className="route-line"><span className="route-dot" /></span><span className="route-person"><i className="walker-head" /><i className="walker-body" /><i className="walker-arm" /><i className="walker-leg walker-leg-one" /><i className="walker-leg walker-leg-two" /></span><span className="route-home">⌂</span><span className="route-office">▦</span></div><p className="loading-kicker">On the way</p><h1>Getting your workspace ready</h1><p className="loading-copy">A quick walk from home to your workspace.</p><div className="loading-bar" role="progressbar" aria-label="Loading workspace"><span /></div></section></main>
   }
 
   if (!userEmail) {
@@ -387,7 +387,7 @@ export default function Page() {
   }
 
   if (liveLoading) {
-    return <main className="auth-shell"><section className="auth-card auth-loading" aria-label="Refreshing jobs"><div className="loading-route" aria-hidden="true"><span className="route-line"><span className="route-dot" /></span><span className="route-person">●</span><span className="route-home">⌂</span><span className="route-office">▦</span></div><p className="loading-kicker">On the way</p><h1>Refreshing your job matches</h1><p className="loading-copy">Your agents are walking from home to office and checking the latest roles.</p><div className="loading-bar" role="progressbar" aria-label="Refreshing jobs"><span /></div></section></main>
+    return <main className="auth-shell"><section className="auth-card auth-loading" aria-label="Refreshing jobs"><div className="loading-route" aria-hidden="true"><span className="route-line"><span className="route-dot" /></span><span className="route-person"><i className="walker-head" /><i className="walker-body" /><i className="walker-arm" /><i className="walker-leg walker-leg-one" /><i className="walker-leg walker-leg-two" /></span><span className="route-home">⌂</span><span className="route-office">▦</span></div><p className="loading-kicker">On the way</p><h1>Refreshing your job matches</h1><p className="loading-copy">Your agents are walking from home to office and checking the latest roles.</p><div className="loading-bar" role="progressbar" aria-label="Refreshing jobs"><span /></div></section></main>
   }
 
   return (
