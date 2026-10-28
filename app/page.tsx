@@ -61,6 +61,16 @@ function getAccountJobs(email: string): Job[] {
   }))
 }
 
+function dedupeJobs(jobs: Job[]) {
+  const seen = new Set<string>()
+  return jobs.filter((job) => {
+    const key = `${job.title.toLowerCase()}|${job.company.toLowerCase()}|${job.location.toLowerCase()}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function getSourceStats(accountJobs: Job[]) {
   return [
     { name: 'LinkedIn agent', detail: 'Scanning recommendations', icon: Link, color: 'blue', count: `${accountJobs.filter((job) => job.source === 'LinkedIn').length} found` },
@@ -171,7 +181,7 @@ export default function Page() {
     }
   }
 
-  const visibleJobs = liveJobs.length > 0 ? liveJobs : accountJobs
+  const visibleJobs = useMemo(() => dedupeJobs(liveJobs.length > 0 ? liveJobs : accountJobs), [liveJobs, accountJobs])
 
   useEffect(() => {
     if (!userEmail) {
@@ -218,7 +228,7 @@ export default function Page() {
     const matchesTab = activeTab === 'all' || (activeTab === 'verified' ? job.trust === 'Verified' : job.trust === 'Review')
     const haystack = `${job.title} ${job.company} ${job.tags.join(' ')}`.toLowerCase()
     return matchesTab && haystack.includes(query.toLowerCase())
-  }), [activeTab, query])
+  }), [activeTab, query, visibleJobs])
 
   if (authLoading) {
     return <main className="auth-shell"><section className="auth-card auth-loading" aria-label="Loading workspace">Loading your workspace...</section></main>
@@ -275,6 +285,7 @@ export default function Page() {
         <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {running ? 'Running now' : 'Last run 8m ago'}</span></div><p>One main agent coordinating five specialist agents across your connected job platforms.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? `${visibleJobs.length} roles reviewed` : `Reviewing ${visibleJobs.length} roles`}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
 
         <div className="section-title" id="matches"><div><h2>Top matches <span className="result-count">{visibleJobs.length} results</span></h2><p>Ranked by fit, freshness, and trust signals for <strong>{userEmail}</strong>.</p></div><button className="filter-button"><Filter size={15} /> Filters <span className="filter-number">2</span></button></div>
+        <div className="control-strip" aria-label="Search quality and user controls"><span><Check size={14} /> {visibleJobs.length} unique roles</span><span><ShieldCheck size={14} /> Evidence-backed trust checks</span><span><Globe2 size={14} /> {sourceStats.length} sources</span><button type="button" onClick={() => setQuery('')}>Clear search</button></div>
         <div className="toolbar"><div className="search-box"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search roles, companies, skills..." aria-label="Search jobs" /></div><div className="tabs" role="tablist"><button className={activeTab === 'all' ? 'selected' : ''} onClick={() => setActiveTab('all')}>All jobs</button><button className={activeTab === 'verified' ? 'selected' : ''} onClick={() => setActiveTab('verified')}><ShieldCheck size={14} /> Verified <span>68</span></button><button className={activeTab === 'review' ? 'selected' : ''} onClick={() => setActiveTab('review')}><AlertTriangle size={14} /> Needs review <span>5</span></button></div><button className="sort-button"><ListFilter size={15} /> Best match <ChevronDown size={14} /></button></div>
 
         <div className="job-list">{filteredJobs.map((job) => <article className="job-card" key={`${job.title}-${job.company}`} onClick={() => setSelectedJob(job)}><div className="company-logo" aria-label={`${job.company} logo`} title={`${job.company} logo`}>{job.company.slice(0, 1)}</div><div className="job-main"><div className="job-title-row"><div><h3>{job.title}</h3><p>{job.company} <span>·</span> {job.location}</p></div><span className={`match-score ${job.match < 80 ? 'yellow' : ''}`}>{job.match}% fit</span></div><div className="job-tags">{job.tags.map((tag) => <span key={tag}>{tag}</span>)}<span className={`source-tag ${job.source === 'LinkedIn' ? 'linkedin-tag' : 'naukri-tag'}`}>{job.source === 'LinkedIn' ? <Link size={12} /> : <BriefcaseBusiness size={12} />} {job.source}</span></div></div><div className="job-side"><button className={`save-job ${savedJobs.some((saved) => saved.title === job.title && saved.company === job.company) ? 'saved' : ''}`} onClick={(event) => { event.stopPropagation(); toggleSavedJob(job) }} aria-label={`${savedJobs.some((saved) => saved.title === job.title && saved.company === job.company) ? 'Remove' : 'Save'} ${job.title}`}>{savedJobs.some((saved) => saved.title === job.title && saved.company === job.company) ? 'Saved' : 'Save'}</button><span className={`trust ${job.trust === 'Review' ? 'review' : ''}`}>{job.trust === 'Verified' ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />} {job.trust}</span><span className="posted"><Clock3 size={13} /> {job.posted}</span><a className="apply-link" href={job.applyUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Apply on {job.source} <ArrowUpRight size={14} /></a><ArrowUpRight size={17} className="open-arrow" /></div></article>)}</div>\n\n        <section className="saved-panel" id="saved" aria-labelledby="saved-title"><div className="section-title"><div><h2 id="saved-title">Saved jobs <span className="result-count">{savedJobs.length}</span></h2><p>Saved for {userEmail}. These are scoped to this signed-in workspace.</p></div></div>{savedJobs.length ? <div className="job-list saved-list">{savedJobs.map((job) => <article className="job-card" key={`saved-${job.title}-${job.company}`} onClick={() => setSelectedJob(job)}><div className="company-logo">{job.company.slice(0, 1)}</div><div className="job-main"><div className="job-title-row"><div><h3>{job.title}</h3><p>{job.company} <span>·</span> {job.location}</p></div><span className="source-tag">{job.source}</span></div></div><button className="save-job saved" onClick={(event) => { event.stopPropagation(); toggleSavedJob(job) }}>Saved</button></article>)}</div> : <div className="empty-state"><div className="empty-state-icon"><Link size={19} /></div><div><strong>No saved jobs in this workspace yet</strong><p>Save a job from the matches above. LinkedIn and Naukri saved items cannot be read from email login alone without their approved API connection.</p></div></div>}</section>\n\n        <footer className="footer-note"><ShieldCheck size={15} /> Trust scores are signals, not guarantees. Always verify details on the original posting.</footer>
