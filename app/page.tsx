@@ -204,7 +204,12 @@ export default function Page() {
     }
   }
 
-  const visibleJobs = useMemo(() => dedupeJobs(liveJobs.length > 0 ? liveJobs : accountJobs), [liveJobs, accountJobs])
+  const visibleJobs = useMemo(() => {
+    // Keep the profile-ranked platform matches visible while live public feeds load.
+    // The public feeds do not expose LinkedIn/Naukri saved items, so replacing the
+    // account set here made those agents incorrectly report zero results.
+    return dedupeJobs([...accountJobs, ...liveJobs])
+  }, [liveJobs, accountJobs])
 
   useEffect(() => {
     if (!userEmail) {
