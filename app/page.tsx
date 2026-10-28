@@ -58,6 +58,9 @@ export default function Page() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [registrationSent, setRegistrationSent] = useState(false)
+  const [authSubmitting, setAuthSubmitting] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -80,20 +83,39 @@ export default function Page() {
     }
   }, [])
 
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError('')
+    setRegistrationSent(false)
 
     if (!email.trim() || password.length < 6) {
       setLoginError('Enter a valid email and a password with at least 6 characters.')
       return
     }
 
-    const { error } = await createClient().auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
+    setAuthSubmitting(true)
+    const supabase = createClient()
+    if (authMode === 'register') {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`,
+        },
+      })
+      setAuthSubmitting(false)
+      if (error) {
+        setLoginError(error.message.toLowerCase().includes('password')
+          ? 'Choose a stronger password with at least 6 characters.'
+          : 'We could not create that account. Check the email and try again.')
+      } else {
+        setRegistrationSent(true)
+      }
+      return
+    }
 
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    setAuthSubmitting(false)
     if (error) {
       setLoginError(error.message.toLowerCase().includes('confirm')
         ? 'Check your inbox and confirm your email before signing in.'
@@ -142,16 +164,20 @@ export default function Page() {
           <div className="brand auth-brand"><span className="brand-mark"><Sparkles size={17} /></span><span>Scoutly</span></div>
           <div className="auth-icon"><ShieldCheck size={24} /></div>
           <p className="eyebrow">PRIVATE JOB SEARCH</p>
-          <h1 id="login-title">Sign in to your workspace</h1>
-          <p className="auth-copy">Use your email credentials to access your matches, agent progress, and fraud checks.</p>
-          <form onSubmit={handleLogin}>
+          <h1 id="login-title">{authMode === 'login' ? 'Sign in to your workspace' : 'Create your workspace'}</h1>
+          <p className="auth-copy">{authMode === 'login' ? 'Use your email credentials to access your matches, agent progress, and fraud checks.' : 'Register with your email to save your job matches and agent progress securely.'}</p>
+          {registrationSent ? <p className="auth-success" role="status">Check your inbox to confirm your email, then come back and sign in.</p> : null}
+          <form onSubmit={handleAuth}>
             <label htmlFor="email">Email address</label>
             <input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" required />
             <label htmlFor="password">Password</label>
             <input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" minLength={6} required />
             {loginError && <p className="auth-error" role="alert">{loginError}</p>}
-            <button className="auth-submit" type="submit">Continue to Scoutly <ArrowUpRight size={15} /></button>
+            <button className="auth-submit" type="submit" disabled={authSubmitting}>{authSubmitting ? 'Please wait...' : authMode === 'login' ? 'Continue to Scoutly' : 'Create account'} <ArrowUpRight size={15} /></button>
           </form>
+          <button className="auth-switch" type="button" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setLoginError(''); setRegistrationSent(false) }}>
+            {authMode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in'}
+          </button>
           <p className="auth-note"><ShieldCheck size={14} /> Your workspace data is scoped to this signed-in email.</p>
         </section>
       </main>
