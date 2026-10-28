@@ -55,6 +55,13 @@ const sourceStats = [
 export default function Page() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+
+  const profile = useMemo(() => {
+    const localPart = userEmail?.split('@')[0]?.replace(/[._-]+/g, ' ').trim() || 'Your profile'
+    const name = localPart.replace(/\b\w/g, (letter) => letter.toUpperCase())
+    const initials = localPart.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'YU'
+    return { name, initials }
+  }, [userEmail])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
@@ -188,7 +195,7 @@ export default function Page() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark"><Sparkles size={17} /></span><span>Scoutly</span></div>
-        <div className="workspace"><div className="avatar">AR</div><div><strong>Arjun&apos;s workspace</strong><span>Personal workspace</span></div><ChevronDown size={15} /></div>
+        <div className="workspace"><div className="avatar">{profile.initials}</div><div><strong>{profile.name}&apos;s workspace</strong><span>Personal workspace</span></div><ChevronDown size={15} /></div>
         <nav className="nav-list" aria-label="Primary navigation">
           <a className="nav-item active" href="#overview"><Target size={17} /> Overview</a>
           <a className="nav-item" href="#matches"><BriefcaseBusiness size={17} /> Job matches <span className="nav-count">73</span></a>
@@ -196,12 +203,12 @@ export default function Page() {
           <a className="nav-item" href="#saved"><Check size={17} /> Saved jobs</a>
         </nav>
         <div className="side-label">Your profile</div>
-        <a className="nav-item" href="#profile"><UserRound size={17} /> Profile strength <span className="profile-score">82%</span></a>
+        <a className="nav-item" href="#profile"><UserRound size={17} /> {profile.name}&apos;s profile <span className="profile-score">82%</span></a>
         <div className="sidebar-bottom"><div className="side-label">Connected sources</div><div className="connected"><Link size={15} /> LinkedIn <span>Connected</span></div><div className="connected"><BriefcaseBusiness size={15} /> Naukri <span>Connected</span></div><button className="help-link">? <span>Help center</span></button></div>
       </aside>
 
       <section className="content">
-        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, Arjun <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs"><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label="Sign out"><span className="avatar small">AR</span><ChevronDown size={14} /></button></div></header>
+        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, {profile.name} <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs" onClick={() => { setProgress(0); setRunning(true) }}><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label={`Sign out ${profile.name}`}><span className="avatar small">{profile.initials}</span><ChevronDown size={14} /></button></div></header>
 
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true) }}><Play size={15} fill="currentColor" /> {running ? 'Agents running...' : 'Run agents now'}</button></div>
 
