@@ -142,6 +142,7 @@ export default function Page() {
   useEffect(() => {
     const supabase = createClient()
     let active = true
+    let startupTimer: number | undefined
 
     supabase.auth.getUser().then(({ data }: { data: { user: { email?: string | null; user_metadata?: Record<string, unknown> } | null } }) => {
       if (active) {
@@ -151,7 +152,9 @@ export default function Page() {
         setProfileRole(typeof metadata.target_role === 'string' ? metadata.target_role : '')
         setProfileLocation(typeof metadata.location === 'string' ? metadata.location : '')
         setProfileSkillsInput(typeof metadata.skills === 'string' ? metadata.skills : '')
-        setAuthLoading(false)
+        startupTimer = window.setTimeout(() => {
+          if (active) setAuthLoading(false)
+        }, 2000)
       }
     })
 
@@ -161,6 +164,7 @@ export default function Page() {
 
     return () => {
       active = false
+      if (startupTimer) window.clearTimeout(startupTimer)
       listener.subscription.unsubscribe()
     }
   }, [])
@@ -381,6 +385,10 @@ export default function Page() {
         </section>
       </main>
     )
+  }
+
+  if (liveLoading) {
+    return <main className="auth-shell"><section className="auth-card auth-loading" aria-label="Refreshing jobs"><div className="loading-route" aria-hidden="true"><span className="route-line"><span className="route-dot" /></span><span className="route-person">●</span><span className="route-home">⌂</span><span className="route-office">▦</span></div><p className="loading-kicker">On the way</p><h1>Refreshing your job matches</h1><p className="loading-copy">Your agents are walking from home to office and checking the latest roles.</p><div className="loading-bar" role="progressbar" aria-label="Refreshing jobs"><span /></div></section></main>
   }
 
   return (
