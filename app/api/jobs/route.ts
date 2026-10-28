@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-function normalizeJob(item: any, source: 'Indeed' | 'Wellfound' | 'Glassdoor'): any {
+function normalizeJob(item: any, source: 'Remotive' | 'Arbeitnow' | 'Jobicy'): any {
   const title = item.title || item.position || 'Open role'
   const company = item.company_name || item.company || item.companyName || 'Unknown company'
   const location = item.location || item.candidate_required_location || 'Remote'
@@ -40,9 +40,9 @@ export async function GET(request: Request) {
   const arbeitnow = sources[1].status === 'fulfilled' ? sources[1].value?.data || [] : []
   const jobicy = sources[2].status === 'fulfilled' ? sources[2].value?.jobs || [] : []
 
-  results.push(...remotive.slice(0, 30).map((job: any) => normalizeJob(job, 'Indeed')))
-  results.push(...arbeitnow.slice(0, 30).map((job: any) => normalizeJob(job, 'Wellfound')))
-  results.push(...jobicy.slice(0, 30).map((job: any) => normalizeJob(job, 'Glassdoor')))
+  results.push(...remotive.slice(0, 30).map((job: any) => normalizeJob(job, 'Remotive')))
+  results.push(...arbeitnow.slice(0, 30).map((job: any) => normalizeJob(job, 'Arbeitnow')))
+  results.push(...jobicy.slice(0, 30).map((job: any) => normalizeJob(job, 'Jobicy')))
 
   const uniqueJobs = results.filter((job, index, all) => all.findIndex((candidate) =>
     `${candidate.title}|${candidate.company}|${candidate.location}`.toLowerCase() === `${job.title}|${job.company}|${job.location}`.toLowerCase()

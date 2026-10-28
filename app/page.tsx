@@ -40,7 +40,7 @@ type Job = {
   title: string
   company: string
   location: string
-  source: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Wellfound' | 'Glassdoor'
+  source: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Wellfound' | 'Glassdoor' | 'Remotive' | 'Arbeitnow' | 'Jobicy'
   match: number
   trust: 'Verified' | 'Review'
   posted: string
@@ -104,18 +104,22 @@ function dedupeJobs(jobs: Job[]) {
 
 function getSourceStats(accountJobs: Job[], savedJobs: Job[], applicationStatuses: Record<string, string>) {
   const sources = [
-    { source: 'LinkedIn', name: 'LinkedIn agent', detail: 'Scanning recommendations', icon: Link, color: 'blue' },
-    { source: 'Naukri', name: 'Naukri agent', detail: 'Checking new listings', icon: BriefcaseBusiness, color: 'orange' },
-    { source: 'Indeed', name: 'Indeed agent', detail: 'Searching global roles', icon: Search, color: 'green' },
-    { source: 'Wellfound', name: 'Wellfound agent', detail: 'Watching startup roles', icon: Sparkles, color: 'purple' },
-    { source: 'Glassdoor', name: 'Glassdoor agent', detail: 'Checking company signals', icon: ShieldCheck, color: 'pink' },
+    { source: 'Remotive', name: 'Remotive public feed', detail: 'Live public remote jobs', icon: Globe2, color: 'blue' },
+    { source: 'Arbeitnow', name: 'Arbeitnow public feed', detail: 'Live public job listings', icon: Globe2, color: 'green' },
+    { source: 'Jobicy', name: 'Jobicy public feed', detail: 'Live public remote jobs', icon: Globe2, color: 'purple' },
+    { source: 'LinkedIn', name: 'LinkedIn agent', detail: 'Official API not connected', icon: Link, color: 'blue' },
+    { source: 'Naukri', name: 'Naukri agent', detail: 'Official API not connected', icon: BriefcaseBusiness, color: 'orange' },
+    { source: 'Indeed', name: 'Indeed agent', detail: 'Official API not connected', icon: Search, color: 'green' },
+    { source: 'Wellfound', name: 'Wellfound agent', detail: 'Official API not connected', icon: Sparkles, color: 'purple' },
+    { source: 'Glassdoor', name: 'Glassdoor agent', detail: 'Official API not connected', icon: ShieldCheck, color: 'pink' },
   ] as const
   return sources.map(({ source, ...agent }) => {
     const sourceJobs = accountJobs.filter((job) => job.source === source)
     const tracked = savedJobs.filter((job) => job.source === source)
     const statuses = tracked.map((job) => applicationStatuses[`${job.title}-${job.company}`]).filter(Boolean)
     const statusSummary = ['Applied', 'Interview', 'Offer', 'Rejected'].filter((status) => statuses.includes(status)).map((status) => `${statuses.filter((value) => value === status).length} ${status.toLowerCase()}`).join(' · ')
-    return { ...agent, count: `${sourceJobs.length} found${tracked.length ? ` · ${tracked.length} tracked${statusSummary ? ` (${statusSummary})` : ''}` : ''}` }
+    const liveFeed = source === 'Remotive' || source === 'Arbeitnow' || source === 'Jobicy'
+    return { ...agent, count: liveFeed ? `${sourceJobs.length} found${tracked.length ? ` · ${tracked.length} tracked${statusSummary ? ` (${statusSummary})` : ''}` : ''}` : 'Not connected' }
   })
 }
 
@@ -250,6 +254,7 @@ export default function Page() {
   const skillGaps = useMemo(() => Array.from(new Set(accountJobs.flatMap((job) => job.tags))).filter((skill) => !profileSkillsInput.toLowerCase().includes(skill.toLowerCase())).slice(0, 4), [accountJobs, profileSkillsInput])
   const [liveJobs, setLiveJobs] = useState<Job[]>([])
   const [liveLoading, setLiveLoading] = useState(false)
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState<Date | null>(null)
   const [savedJobs, setSavedJobs] = useState<Job[]>([])
 
   async function refreshLiveJobs() {
@@ -259,6 +264,7 @@ export default function Page() {
       if (response.ok) {
         const payload = await response.json()
         setLiveJobs(payload.jobs || [])
+        setLiveUpdatedAt(new Date())
       }
     } finally {
       setLiveLoading(false)
@@ -269,7 +275,7 @@ export default function Page() {
     // Keep the profile-ranked platform matches visible while live public feeds load.
     // The public feeds do not expose LinkedIn/Naukri saved items, so replacing the
     // account set here made those agents incorrectly report zero results.
-    return dedupeJobs([...accountJobs, ...liveJobs])
+    return liveJobs.length ? dedupeJobs(liveJobs) : accountJobs
   }, [liveJobs, accountJobs])
 
   useEffect(() => {
@@ -305,6 +311,10 @@ export default function Page() {
   useEffect(() => {
     document.documentElement.dataset.theme = darkMode ? 'dark' : 'light'
   }, [darkMode])
+
+  useEffect(() => {
+    if (userEmail) refreshLiveJobs()
+  }, [userEmail])
 
   useEffect(() => {
     if (!running) return
@@ -370,7 +380,7 @@ export default function Page() {
         </nav>
         <div className="side-label">Your profile</div>
         <a className="nav-item" href="#profile"><UserRound size={17} /> {profile.name}&apos;s profile <span className="profile-score">{profileScore}%</span></a>
-        <div className="sidebar-bottom"><div className="side-label">Connected sources</div><div className="connected"><Link size={15} /> LinkedIn <span>Connected</span></div><div className="connected"><BriefcaseBusiness size={15} /> Naukri <span>Connected</span></div><div className="connected"><Search size={15} /> Indeed <span>Connected</span></div><div className="connected"><Sparkles size={15} /> Wellfound <span>Connected</span></div><div className="connected"><ShieldCheck size={15} /> Glassdoor <span>Connected</span></div><button className="help-link">? <span>Help center</span></button></div>
+        <div className="sidebar-bottom"><div className="side-label">Job sources</div><div className="connected"><Globe2 size={15} /> Remotive <span>Live public feed</span></div><div className="connected"><Globe2 size={15} /> Arbeitnow <span>Live public feed</span></div><div className="connected"><Globe2 size={15} /> Jobicy <span>Live public feed</span></div><div className="connected unavailable"><Link size={15} /> LinkedIn <span>Not connected</span></div><div className="connected unavailable"><BriefcaseBusiness size={15} /> Naukri <span>Not connected</span></div><div className="connected unavailable"><Search size={15} /> Indeed <span>Not connected</span></div><div className="connected unavailable"><Sparkles size={15} /> Wellfound <span>Not connected</span></div><div className="connected unavailable"><ShieldCheck size={15} /> Glassdoor <span>Not connected</span></div><button className="help-link">? <span>Help center</span></button></div>
       </aside>
 
       <section className="content">
@@ -380,7 +390,7 @@ export default function Page() {
 
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><div className="hero-actions"><button className="saved-jobs-button" onClick={() => document.getElementById('saved')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Bookmark size={15} /> Saved jobs <span>{savedJobs.length}</span></button><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><Play size={15} fill="currentColor" /> {liveLoading ? 'Fetching live jobs...' : running ? 'Agents running...' : 'Run agents now'}</button></div></div>
 
-        <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {running ? 'Running now' : 'Last run 8m ago'}</span></div><p>One main agent coordinating five specialist agents and detecting saved-job application status across your connected platforms.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? `${visibleJobs.length} roles reviewed` : `Reviewing ${visibleJobs.length} roles`}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
+        <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {liveLoading || running ? 'Running now' : liveUpdatedAt ? `Live · ${liveJobs.length} jobs` : 'Waiting for live feed'}</span></div><p>Live agents refresh verified public feeds from Remotive, Arbeitnow, and Jobicy. LinkedIn, Naukri, Indeed, Wellfound, and Glassdoor require official API access.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? `${visibleJobs.length} roles reviewed` : `Reviewing ${visibleJobs.length} roles`}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
 
         <div className="section-title" id="matches"><div><h2>Top matches <span className="result-count">{visibleJobs.length} results</span></h2><p>Ranked by profile skills, freshness, and trust signals for <strong>{userEmail}</strong>.</p></div><button className="filter-button"><Filter size={15} /> Filters <span className="filter-number">2</span></button></div>
         <div className="control-strip" aria-label="Search quality and user controls"><span><Check size={14} /> {visibleJobs.length} unique roles</span><span><ShieldCheck size={14} /> Evidence-backed trust checks</span><span><Globe2 size={14} /> {sourceStats.length} sources</span><button type="button" onClick={() => setQuery('')}>Clear search</button></div>
