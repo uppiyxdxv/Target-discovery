@@ -212,6 +212,80 @@ export default function Page() {
     setUserEmail(null)
   }
 
+  async function handleResumeUpload(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.target
+    const file = input.files?.[0]
+    if (!file) return
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      setResumeName('')
+      setResumeStatus('Please choose a resume in PDF format.')
+      input.value = ''
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setResumeName('')
+      setResumeStatus('PDFs must be smaller than 10 MB.')
+      input.value = ''
+      return
+    }
+
+    setResumeName(file.name)
+    setResumeStatus('Reading resume and detecting skills...')
+    try {
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+      const buffer = new Uint8Array(await file.arrayBuffer())
+      const pdf = await pdfjs.getDocument({ data: buffer, disableWorker: true } as Parameters<typeof pdfjs.getDocument>[0]).promise
+      let text = ''
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber)
+        const content = await page.getTextContent()
+        text += `${content.items.map((item) => ('str' in item ? item.str : '')).join(' ')} `
+      }
+      if (!text.trim()) {
+        setResumeStatus('No selectable text found. Running OCR on the resume...')
+        const { createWorker } = await import('tesseract.js')
+        const worker = await createWorker('eng')
+        try {
+          for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+            const page = await pdf.getPage(pageNumber)
+            const viewport = page.getViewport({ scale: 1.5 })
+            const canvas = document.createElement('canvas')
+            canvas.width = Math.ceil(viewport.width)
+            canvas.height = Math.ceil(viewport.height)
+            const context = canvas.getContext('2d')
+            if (!context) continue
+            await page.render({ canvas, canvasContext: context, viewport }).promise
+            const result = await worker.recognize(canvas)
+            text += `${result.data.text} `
+          }
+        } finally {
+          await worker.terminate()
+        }
+      }
+      const normalizedText = text.toLowerCase()
+      const knownSkills = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'SQL', 'PostgreSQL', 'Figma', 'UX Research', 'Product Management', 'Analytics', 'AWS', 'Docker', 'Java', 'Go']
+      const detected = knownSkills.filter((skill) => normalizedText.includes(skill.toLowerCase()))
+      if (!detected.length) {
+        setResumeStatus('Resume uploaded, but no supported skills were detected. Your usual job matches are still shown; add skills manually to improve them.')
+        return
+      }
+      setResumeSkills(detected)
+      setProfileSkillsInput((current) => Array.from(new Set([...current.split(',').map((skill) => skill.trim()).filter(Boolean), ...detected])).join(', '))
+      if (!profileRole.trim()) {
+        const role = ['product manager', 'designer', 'engineer', 'developer', 'analyst'].find((candidate) => normalizedText.includes(candidate))
+        if (role) setProfileRole(role.replace(/\b\w/g, (letter) => letter.toUpperCase()))
+      }
+      setResumeStatus(`${detected.length} skills detected. Save your profile to refresh job matches.`)
+    } catch (error) {
+      console.error('[v0] Resume PDF parsing failed:', error)
+      setResumeStatus('Resume uploaded, but OCR could not extract readable text. Your usual job matches are still shown; add skills manually or try a clearer PDF.')
+    } finally {
+      input.value = ''
+    }
+  }
+
   async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!userEmail || !profileName.trim()) return
