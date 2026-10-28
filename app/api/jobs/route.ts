@@ -7,16 +7,21 @@ function normalizeJob(item: any, source: 'Indeed' | 'Wellfound' | 'Glassdoor'): 
   const company = item.company_name || item.company || item.companyName || 'Unknown company'
   const location = item.location || item.candidate_required_location || 'Remote'
   const applyUrl = item.url || item.job_url || item.link || '#'
+  const warning = item.salary_min === 0 || item.salary_max === 0
+    ? 'Salary information is missing or unusually low; verify the listing before applying.'
+    : undefined
+  const trust = company !== 'Unknown company' && applyUrl !== '#' && !warning ? 'Verified' : 'Review'
   return {
     title,
     company,
     location,
     source,
     match: 82,
-    trust: 'Review',
+    trust,
     posted: item.publication_date ? new Date(item.publication_date).toLocaleDateString() : 'Recently',
     tags: Array.isArray(item.tags) ? item.tags.slice(0, 3) : [],
     applyUrl,
+    ...(warning ? { warning } : {}),
   }
 }
 
