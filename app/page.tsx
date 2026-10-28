@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   AlertTriangle,
@@ -60,13 +60,14 @@ const jobTemplates: Job[] = [
   { title: 'Product Marketing Manager', company: 'Freshworks', location: 'Chennai · Hybrid', source: 'Glassdoor', match: 79, trust: 'Verified', posted: '1d ago', tags: ['Go-to-market', 'B2B'], applyUrl: 'https://www.glassdoor.co.in/Job/index.htm' },
 ]
 
-function getAccountJobs(email: string): Job[] {
+function getAccountJobs(email: string, skillsInput = ''): Job[] {
   const seed = Array.from(email).reduce((total, character) => total + character.charCodeAt(0), 0)
   const rotation = seed % jobTemplates.length
-  return [...jobTemplates.slice(rotation), ...jobTemplates.slice(0, rotation)].map((job, index) => ({
-    ...job,
-    match: Math.max(68, Math.min(98, job.match - ((seed + index * 3) % 8))),
-  }))
+  const skills = skillsInput.toLowerCase().split(',').map((skill) => skill.trim()).filter(Boolean)
+  return [...jobTemplates.slice(rotation), ...jobTemplates.slice(0, rotation)].map((job, index) => {
+    const skillMatches = skills.filter((skill) => job.tags.some((tag) => tag.toLowerCase().includes(skill) || skill.includes(tag.toLowerCase())))
+    return { ...job, match: Math.max(68, Math.min(99, job.match - ((seed + index * 3) % 8) + Math.min(12, skillMatches.length * 5))) }
+  })
 }
 
 function getMatchDetails(job: Job) {
@@ -115,6 +116,8 @@ export default function Page() {
   const [profileSkillsInput, setProfileSkillsInput] = useState('')
   const [profileEditOpen, setProfileEditOpen] = useState(false)
   const [profileSaveState, setProfileSaveState] = useState('')
+  const [resumeName, setResumeName] = useState('')
+  const [resumeStatus, setResumeStatus] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const profile = useMemo(() => {
@@ -201,6 +204,42 @@ export default function Page() {
     setUserEmail(null)
   }
 
+  async function handleResumeUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.type !== 'application/pdf') {
+      setResumeStatus('Please upload a PDF resume.')
+      return
+    }
+    setResumeName(file.name)
+    setResumeStatus('Reading resume and detecting skills...')
+    try {
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+      const buffer = await file.arrayBuffer()
+      const pdf = await pdfjs.getDocument({ data: buffer, disableWorker: true }).promise
+      let text = ''
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber)
+        const content = await page.getTextContent()
+        text += `${content.items.map((item) => ('str' in item ? item.str : '')).join(' ')} `
+      }
+      const knownSkills = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'SQL', 'PostgreSQL', 'Figma', 'UX Research', 'Product Management', 'Analytics', 'AWS', 'Docker', 'Java', 'Go']
+      const detected = knownSkills.filter((skill) => text.toLowerCase().includes(skill.toLowerCase()))
+      if (!detected.length) {
+        setResumeStatus('Resume read, but no supported skills were detected. Add skills manually below.')
+        return
+      }
+      setProfileSkillsInput((current) => Array.from(new Set([...current.split(',').map((skill) => skill.trim()).filter(Boolean), ...detected])).join(', '))
+      if (!profileRole.trim()) {
+        const role = ['product manager', 'designer', 'engineer', 'developer', 'analyst'].find((candidate) => text.toLowerCase().includes(candidate))
+        if (role) setProfileRole(role.replace(/\\b\\w/g, (letter) => letter.toUpperCase()))
+      }
+      setResumeStatus(`${detected.length} skills detected. Save your profile to refresh job matches.`)
+    } catch {
+      setResumeStatus('We could not read this PDF. Try a text-based PDF or add skills manually.')
+    }
+  }
+
   async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!userEmail || !profileName.trim()) return
@@ -222,7 +261,7 @@ export default function Page() {
     window.setTimeout(() => setProfileSaveState(''), 2400)
   }
 
-  const accountJobs = useMemo(() => userEmail ? getAccountJobs(userEmail) : [], [userEmail])
+  const accountJobs = useMemo(() => userEmail ? getAccountJobs(userEmail, profileSkillsInput) : [], [userEmail, profileSkillsInput])
   const profileScore = useMemo(() => {
     if (!accountJobs.length) return 0
     return Math.round(accountJobs.reduce((total, job) => total + job.match, 0) / accountJobs.length)
@@ -351,6 +390,8 @@ export default function Page() {
 
       <section className="content">
         <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Have a nice day, {profile.name} <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs" onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label={`Sign out ${profile.name}`}><span className="avatar small">{profile.initials}</span><ChevronDown size={14} /></button><button className="logout-button" onClick={handleLogout}>Log out</button><button className="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}><Menu size={19} /></button></div>{mobileMenuOpen && <nav className="mobile-menu" aria-label="Mobile navigation"><a href="#profile" onClick={() => setMobileMenuOpen(false)}><UserRound size={16} /> {profile.name}&apos;s profile <span>{profileScore}%</span></a><a href="#saved" onClick={() => setMobileMenuOpen(false)}><Bookmark size={16} /> Saved jobs <span>{savedJobs.length}</span></a><button type="button" onClick={handleLogout}><ArrowUpRight size={16} /> Log out</button></nav>}</header>
+
+        <section className="resume-panel" aria-labelledby="resume-title"><div><div className="heading-with-icon"><span className="spark-icon"><BriefcaseBusiness size={16} /></span><h2 id="resume-title">Build matches from your resume</h2></div><p>Upload a PDF and Target will detect skills, update your profile, and re-rank relevant jobs.</p>{resumeName ? <p className="resume-file" role="status">{resumeName}</p> : null}{resumeStatus ? <p className="resume-status" role="status">{resumeStatus}</p> : null}</div><label className="resume-upload"><input type="file" accept="application/pdf,.pdf" onChange={handleResumeUpload} /> <ArrowUpRight size={15} /> Upload PDF resume</label></section>
 
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><div className="hero-actions"><button className="saved-jobs-button" onClick={() => document.getElementById('saved')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Bookmark size={15} /> Saved jobs <span>{savedJobs.length}</span></button><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><Play size={15} fill="currentColor" /> {liveLoading ? 'Fetching live jobs...' : running ? 'Agents running...' : 'Run agents now'}</button></div></div>
 
