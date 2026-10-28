@@ -50,6 +50,13 @@ const jobTemplates: Job[] = [
   { title: 'Product Operations Associate', company: 'Atlassian', location: 'Remote · India', source: 'Indeed', match: 88, trust: 'Verified', posted: '3h ago', tags: ['Operations', 'SQL'], applyUrl: 'https://in.indeed.com/jobs?q=Product+Operations+Associate' },
   { title: 'Founding Product Designer', company: 'Nova Labs', location: 'Remote · India', source: 'Wellfound', match: 86, trust: 'Review', posted: '8h ago', tags: ['Figma', 'Startups'], applyUrl: 'https://wellfound.com/jobs' },
   { title: 'Senior UX Designer', company: 'Adobe', location: 'Noida · Hybrid', source: 'Glassdoor', match: 83, trust: 'Verified', posted: '2d ago', tags: ['Design systems', 'Research'], applyUrl: 'https://www.glassdoor.co.in/Job/index.htm' },
+  { title: 'Product Manager, Growth', company: 'Flipkart', location: 'Bengaluru · Hybrid', source: 'LinkedIn', match: 89, trust: 'Verified', posted: '4h ago', tags: ['Product strategy', 'Growth'], applyUrl: 'https://www.linkedin.com/jobs/search/?keywords=Product%20Manager%20Growth%20Flipkart' },
+  { title: 'Interaction Designer', company: 'PhonePe', location: 'Bengaluru · Hybrid', source: 'LinkedIn', match: 87, trust: 'Verified', posted: '6h ago', tags: ['Interaction design', 'Figma'], applyUrl: 'https://www.linkedin.com/jobs/search/?keywords=Interaction%20Designer%20PhonePe' },
+  { title: 'Backend Developer', company: 'HCLTech', location: 'Chennai · On-site', source: 'Naukri', match: 76, trust: 'Review', posted: '7h ago', tags: ['Node.js', 'PostgreSQL'], applyUrl: 'https://www.naukri.com/backend-developer-jobs' },
+  { title: 'Data Analyst', company: 'Tata Digital', location: 'Mumbai · Hybrid', source: 'Naukri', match: 81, trust: 'Verified', posted: '9h ago', tags: ['SQL', 'Analytics'], applyUrl: 'https://www.naukri.com/data-analyst-jobs' },
+  { title: 'Product Analyst', company: 'Meesho', location: 'Bengaluru · Hybrid', source: 'Indeed', match: 85, trust: 'Verified', posted: '10h ago', tags: ['SQL', 'Experimentation'], applyUrl: 'https://in.indeed.com/jobs?q=Product+Analyst+Meesho' },
+  { title: 'UX Designer', company: 'Miro', location: 'Remote · India', source: 'Wellfound', match: 80, trust: 'Review', posted: '12h ago', tags: ['Figma', 'Prototyping'], applyUrl: 'https://wellfound.com/jobs' },
+  { title: 'Product Marketing Manager', company: 'Freshworks', location: 'Chennai · Hybrid', source: 'Glassdoor', match: 79, trust: 'Verified', posted: '1d ago', tags: ['Go-to-market', 'B2B'], applyUrl: 'https://www.glassdoor.co.in/Job/index.htm' },
 ]
 
 function getAccountJobs(email: string): Job[] {

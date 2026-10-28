@@ -35,9 +35,13 @@ export async function GET(request: Request) {
   const arbeitnow = sources[1].status === 'fulfilled' ? sources[1].value?.data || [] : []
   const jobicy = sources[2].status === 'fulfilled' ? sources[2].value?.jobs || [] : []
 
-  results.push(...remotive.slice(0, 10).map((job: any) => normalizeJob(job, 'Indeed')))
-  results.push(...arbeitnow.slice(0, 10).map((job: any) => normalizeJob(job, 'Wellfound')))
-  results.push(...jobicy.slice(0, 10).map((job: any) => normalizeJob(job, 'Glassdoor')))
+  results.push(...remotive.slice(0, 30).map((job: any) => normalizeJob(job, 'Indeed')))
+  results.push(...arbeitnow.slice(0, 30).map((job: any) => normalizeJob(job, 'Wellfound')))
+  results.push(...jobicy.slice(0, 30).map((job: any) => normalizeJob(job, 'Glassdoor')))
 
-  return NextResponse.json({ jobs: results, sources: { remotive: remotive.length > 0, arbeitnow: arbeitnow.length > 0, jobicy: jobicy.length > 0 } })
+  const uniqueJobs = results.filter((job, index, all) => all.findIndex((candidate) =>
+    `${candidate.title}|${candidate.company}|${candidate.location}`.toLowerCase() === `${job.title}|${job.company}|${job.location}`.toLowerCase()
+  ) === index)
+
+  return NextResponse.json({ jobs: uniqueJobs, sources: { remotive: remotive.length > 0, arbeitnow: arbeitnow.length > 0, jobicy: jobicy.length > 0 } })
 }
