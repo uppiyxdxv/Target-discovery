@@ -138,10 +138,10 @@ export default function Page() {
     const supabase = createClient()
     let active = true
 
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then((result: { data: { user: { email?: string | null; user_metadata?: Record<string, unknown> } | null } }) => {
       if (active) {
-        const metadata = data.user?.user_metadata ?? {}
-        setUserEmail(data.user?.email ?? null)
+        const metadata = result.data.user?.user_metadata ?? {}
+        setUserEmail(result.data.user?.email ?? null)
         setProfileName(typeof metadata.display_name === 'string' ? metadata.display_name : '')
         setProfileRole(typeof metadata.target_role === 'string' ? metadata.target_role : '')
         setProfileLocation(typeof metadata.location === 'string' ? metadata.location : '')
@@ -150,7 +150,7 @@ export default function Page() {
       }
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event: string, session: { user?: { email?: string | null } } | null) => {
       if (active) setUserEmail(session?.user?.email ?? null)
     })
 
@@ -206,39 +206,56 @@ export default function Page() {
   }
 
   async function handleResumeUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+    const input = event.target
+    const file = input.files?.[0]
     if (!file) return
-    if (file.type !== 'application/pdf') {
-      setResumeStatus('Please upload a PDF resume.')
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      setResumeName('')
+      setResumeStatus('Please choose a resume in PDF format.')
+      input.value = ''
       return
     }
+    if (file.size > 10 * 1024 * 1024) {
+      setResumeName('')
+      setResumeStatus('PDFs must be smaller than 10 MB.')
+      input.value = ''
+      return
+    }
+
     setResumeName(file.name)
+    setResumeSkills([])
     setResumeStatus('Reading resume and detecting skills...')
     try {
       const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-      const buffer = await file.arrayBuffer()
-      const pdf = await pdfjs.getDocument({ data: buffer, disableWorker: true }).promise
+      const buffer = new Uint8Array(await file.arrayBuffer())
+      const pdf = await pdfjs.getDocument({ data: buffer }).promise
       let text = ''
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber)
         const content = await page.getTextContent()
         text += `${content.items.map((item) => ('str' in item ? item.str : '')).join(' ')} `
       }
+      const normalizedText = text.toLowerCase()
       const knownSkills = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'SQL', 'PostgreSQL', 'Figma', 'UX Research', 'Product Management', 'Analytics', 'AWS', 'Docker', 'Java', 'Go']
-      const detected = knownSkills.filter((skill) => text.toLowerCase().includes(skill.toLowerCase()))
+      const detected = knownSkills.filter((skill) => normalizedText.includes(skill.toLowerCase()))
       if (!detected.length) {
-        setResumeStatus('Resume read, but no supported skills were detected. Add skills manually below.')
+        setResumeStatus('The PDF was read, but no supported skills were detected. Add skills manually below.')
         return
       }
       setResumeSkills(detected)
       setProfileSkillsInput((current) => Array.from(new Set([...current.split(',').map((skill) => skill.trim()).filter(Boolean), ...detected])).join(', '))
       if (!profileRole.trim()) {
-        const role = ['product manager', 'designer', 'engineer', 'developer', 'analyst'].find((candidate) => text.toLowerCase().includes(candidate))
-        if (role) setProfileRole(role.replace(/\\b\\w/g, (letter) => letter.toUpperCase()))
+        const role = ['product manager', 'designer', 'engineer', 'developer', 'analyst'].find((candidate) => normalizedText.includes(candidate))
+        if (role) setProfileRole(role.replace(/\b\w/g, (letter) => letter.toUpperCase()))
       }
       setResumeStatus(`${detected.length} skills detected. Save your profile to refresh job matches.`)
-    } catch {
-      setResumeStatus('We could not read this PDF. Try a text-based PDF or add skills manually.')
+    } catch (error) {
+      console.error('[v0] Resume PDF parsing failed:', error)
+      setResumeStatus('The PDF could not be read. Use a text-based PDF or add skills manually below.')
+    } finally {
+      input.value = ''
     }
   }
 
