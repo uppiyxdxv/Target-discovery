@@ -33,7 +33,7 @@ type Job = {
   title: string
   company: string
   location: string
-  source: 'LinkedIn' | 'Naukri'
+  source: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Wellfound' | 'Glassdoor'
   match: number
   trust: 'Verified' | 'Review'
   posted: string
@@ -47,6 +47,9 @@ const jobTemplates: Job[] = [
   { title: 'Frontend Engineer', company: 'Myntra', location: 'Bengaluru · On-site', source: 'Naukri', match: 91, trust: 'Verified', posted: '5h ago', tags: ['React', 'TypeScript'], applyUrl: 'https://www.naukri.com/frontend-engineer-jobs-in-bengaluru' },
   { title: 'UX Research Intern', company: 'Growth Labs', location: 'Remote · India', source: 'LinkedIn', match: 84, trust: 'Review', posted: '1d ago', tags: ['User interviews', 'Internship'], applyUrl: 'https://www.linkedin.com/jobs/search/?keywords=UX%20Research%20Intern%20Growth%20Labs', warning: 'Requests payment for onboarding' },
   { title: 'Associate Product Manager', company: 'Zepto', location: 'Mumbai · Hybrid', source: 'Naukri', match: 78, trust: 'Verified', posted: '1d ago', tags: ['Product', 'Analytics'], applyUrl: 'https://www.naukri.com/associate-product-manager-jobs' },
+  { title: 'Product Operations Associate', company: 'Atlassian', location: 'Remote · India', source: 'Indeed', match: 88, trust: 'Verified', posted: '3h ago', tags: ['Operations', 'SQL'], applyUrl: 'https://in.indeed.com/jobs?q=Product+Operations+Associate' },
+  { title: 'Founding Product Designer', company: 'Nova Labs', location: 'Remote · India', source: 'Wellfound', match: 86, trust: 'Review', posted: '8h ago', tags: ['Figma', 'Startups'], applyUrl: 'https://wellfound.com/jobs' },
+  { title: 'Senior UX Designer', company: 'Adobe', location: 'Noida · Hybrid', source: 'Glassdoor', match: 83, trust: 'Verified', posted: '2d ago', tags: ['Design systems', 'Research'], applyUrl: 'https://www.glassdoor.co.in/Job/index.htm' },
 ]
 
 function getAccountJobs(email: string): Job[] {
@@ -62,6 +65,9 @@ function getSourceStats(accountJobs: Job[]) {
   return [
     { name: 'LinkedIn agent', detail: 'Scanning recommendations', icon: Link, color: 'blue', count: `${accountJobs.filter((job) => job.source === 'LinkedIn').length} found` },
     { name: 'Naukri agent', detail: 'Checking new listings', icon: BriefcaseBusiness, color: 'orange', count: `${accountJobs.filter((job) => job.source === 'Naukri').length} found` },
+    { name: 'Indeed agent', detail: 'Searching global roles', icon: Search, color: 'green', count: `${accountJobs.filter((job) => job.source === 'Indeed').length} found` },
+    { name: 'Wellfound agent', detail: 'Watching startup roles', icon: Sparkles, color: 'purple', count: `${accountJobs.filter((job) => job.source === 'Wellfound').length} found` },
+    { name: 'Glassdoor agent', detail: 'Checking company signals', icon: ShieldCheck, color: 'pink', count: `${accountJobs.filter((job) => job.source === 'Glassdoor').length} found` },
   ]
 }
 
@@ -241,7 +247,7 @@ export default function Page() {
         </nav>
         <div className="side-label">Your profile</div>
         <a className="nav-item" href="#profile"><UserRound size={17} /> {profile.name}&apos;s profile <span className="profile-score">82%</span></a>
-        <div className="sidebar-bottom"><div className="side-label">Connected sources</div><div className="connected"><Link size={15} /> LinkedIn <span>Connected</span></div><div className="connected"><BriefcaseBusiness size={15} /> Naukri <span>Connected</span></div><button className="help-link">? <span>Help center</span></button></div>
+        <div className="sidebar-bottom"><div className="side-label">Connected sources</div><div className="connected"><Link size={15} /> LinkedIn <span>Connected</span></div><div className="connected"><BriefcaseBusiness size={15} /> Naukri <span>Connected</span></div><div className="connected"><Search size={15} /> Indeed <span>Connected</span></div><div className="connected"><Sparkles size={15} /> Wellfound <span>Connected</span></div><div className="connected"><ShieldCheck size={15} /> Glassdoor <span>Connected</span></div><button className="help-link">? <span>Help center</span></button></div>
       </aside>
 
       <section className="content">
@@ -249,7 +255,7 @@ export default function Page() {
 
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><div className="hero-actions"><button className="saved-jobs-button" onClick={() => document.getElementById('saved')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Bookmark size={15} /> Saved jobs <span>{savedJobs.length}</span></button><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true) }}><Play size={15} fill="currentColor" /> {running ? 'Agents running...' : 'Run agents now'}</button></div></div>
 
-        <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {running ? 'Running now' : 'Last run 8m ago'}</span></div><p>One main agent coordinating your search across 2 sources.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? '73 roles reviewed' : 'Reviewing 73 roles'}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
+        <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {running ? 'Running now' : 'Last run 8m ago'}</span></div><p>One main agent coordinating five specialist agents across your connected job platforms.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? '73 roles reviewed' : 'Reviewing 73 roles'}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
 
         <div className="section-title" id="matches"><div><h2>Top matches <span className="result-count">73 results</span></h2><p>Ranked by fit, freshness, and trust signals for <strong>{userEmail}</strong>.</p></div><button className="filter-button"><Filter size={15} /> Filters <span className="filter-number">2</span></button></div>
         <div className="toolbar"><div className="search-box"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search roles, companies, skills..." aria-label="Search jobs" /></div><div className="tabs" role="tablist"><button className={activeTab === 'all' ? 'selected' : ''} onClick={() => setActiveTab('all')}>All jobs</button><button className={activeTab === 'verified' ? 'selected' : ''} onClick={() => setActiveTab('verified')}><ShieldCheck size={14} /> Verified <span>68</span></button><button className={activeTab === 'review' ? 'selected' : ''} onClick={() => setActiveTab('review')}><AlertTriangle size={14} /> Needs review <span>5</span></button></div><button className="sort-button"><ListFilter size={15} /> Best match <ChevronDown size={14} /></button></div>
