@@ -51,6 +51,10 @@ const sourceStats = [
 ]
 
 export default function Page() {
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(72)
   const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'review'>('all')
@@ -77,6 +81,29 @@ export default function Page() {
     return matchesTab && haystack.includes(query.toLowerCase())
   }), [activeTab, query])
 
+  if (!userEmail) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-card" aria-labelledby="login-title">
+          <div className="brand auth-brand"><span className="brand-mark"><Sparkles size={17} /></span><span>Scoutly</span></div>
+          <div className="auth-icon"><ShieldCheck size={24} /></div>
+          <p className="eyebrow">PRIVATE JOB SEARCH</p>
+          <h1 id="login-title">Sign in to your workspace</h1>
+          <p className="auth-copy">Use your email credentials to access your matches, agent progress, and fraud checks.</p>
+          <form onSubmit={(event) => { event.preventDefault(); if (!email.trim() || password.length < 6) { setLoginError('Enter a valid email and a password with at least 6 characters.'); return }; setLoginError(''); setUserEmail(email.trim()) }}>
+            <label htmlFor="email">Email address</label>
+            <input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" required />
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" minLength={6} required />
+            {loginError && <p className="auth-error" role="alert">{loginError}</p>}
+            <button className="auth-submit" type="submit">Continue to Scoutly <ArrowUpRight size={15} /></button>
+          </form>
+          <p className="auth-note"><ShieldCheck size={14} /> Your workspace data is scoped to this signed-in email.</p>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -94,7 +121,7 @@ export default function Page() {
       </aside>
 
       <section className="content">
-        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, Arjun <span className="wave">✦</span></h1></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs"><RefreshCw size={17} /></button><button className="user-button"><span className="avatar small">AR</span><ChevronDown size={14} /></button></div></header>
+        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, Arjun <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs"><RefreshCw size={17} /></button><button className="user-button" onClick={() => setUserEmail(null)} aria-label="Sign out"><span className="avatar small">AR</span><ChevronDown size={14} /></button></div></header>
 
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p></div><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true) }}><Play size={15} fill="currentColor" /> {running ? 'Agents running...' : 'Run agents now'}</button></div>
 
