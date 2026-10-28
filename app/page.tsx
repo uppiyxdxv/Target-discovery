@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -52,9 +54,57 @@ const sourceStats = [
 
 export default function Page() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+
+  useEffect(() => {
+    const supabase = createClient()
+    let active = true
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (active) {
+        setUserEmail(data.user?.email ?? null)
+        setAuthLoading(false)
+      }
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setUserEmail(session?.user?.email ?? null)
+    })
+
+    return () => {
+      active = false
+      listener.subscription.unsubscribe()
+    }
+  }, [])
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setLoginError('')
+
+    if (!email.trim() || password.length < 6) {
+      setLoginError('Enter a valid email and a password with at least 6 characters.')
+      return
+    }
+
+    const { error } = await createClient().auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
+
+    if (error) {
+      setLoginError(error.message.toLowerCase().includes('confirm')
+        ? 'Check your inbox and confirm your email before signing in.'
+        : 'Invalid email or password.')
+    }
+  }
+
+  async function handleLogout() {
+    await createClient().auth.signOut()
+    setUserEmail(null)
+  }
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(72)
   const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'review'>('all')
@@ -81,6 +131,10 @@ export default function Page() {
     return matchesTab && haystack.includes(query.toLowerCase())
   }), [activeTab, query])
 
+  if (authLoading) {
+    return <main className="auth-shell"><section className="auth-card auth-loading" aria-label="Loading workspace">Loading your workspace...</section></main>
+  }
+
   if (!userEmail) {
     return (
       <main className="auth-shell">
@@ -90,7 +144,7 @@ export default function Page() {
           <p className="eyebrow">PRIVATE JOB SEARCH</p>
           <h1 id="login-title">Sign in to your workspace</h1>
           <p className="auth-copy">Use your email credentials to access your matches, agent progress, and fraud checks.</p>
-          <form onSubmit={(event) => { event.preventDefault(); if (!email.trim() || password.length < 6) { setLoginError('Enter a valid email and a password with at least 6 characters.'); return }; setLoginError(''); setUserEmail(email.trim()) }}>
+          <form onSubmit={handleLogin}>
             <label htmlFor="email">Email address</label>
             <input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" required />
             <label htmlFor="password">Password</label>
@@ -121,7 +175,7 @@ export default function Page() {
       </aside>
 
       <section className="content">
-        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, Arjun <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs"><RefreshCw size={17} /></button><button className="user-button" onClick={() => setUserEmail(null)} aria-label="Sign out"><span className="avatar small">AR</span><ChevronDown size={14} /></button></div></header>
+        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, Arjun <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs"><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label="Sign out"><span className="avatar small">AR</span><ChevronDown size={14} /></button></div></header>
 
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p></div><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true) }}><Play size={15} fill="currentColor" /> {running ? 'Agents running...' : 'Run agents now'}</button></div>
 
