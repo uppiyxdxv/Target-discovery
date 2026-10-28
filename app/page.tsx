@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   AlertTriangle,
   ArrowUpRight,
   Bot,
-  BriefcaseBusiness,
   Bookmark,
   Check,
   ChevronDown,
@@ -114,11 +113,8 @@ export default function Page() {
   const [profileRole, setProfileRole] = useState('')
   const [profileLocation, setProfileLocation] = useState('')
   const [profileSkillsInput, setProfileSkillsInput] = useState('')
-  const [resumeSkills, setResumeSkills] = useState<string[]>([])
   const [profileEditOpen, setProfileEditOpen] = useState(false)
   const [profileSaveState, setProfileSaveState] = useState('')
-  const [resumeName, setResumeName] = useState('')
-  const [resumeStatus, setResumeStatus] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const profile = useMemo(() => {
@@ -205,80 +201,6 @@ export default function Page() {
     setUserEmail(null)
   }
 
-  async function handleResumeUpload(event: ChangeEvent<HTMLInputElement>) {
-    const input = event.target
-    const file = input.files?.[0]
-    if (!file) return
-
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-    if (!isPdf) {
-      setResumeName('')
-      setResumeStatus('Please choose a resume in PDF format.')
-      input.value = ''
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setResumeName('')
-      setResumeStatus('PDFs must be smaller than 10 MB.')
-      input.value = ''
-      return
-    }
-
-    setResumeName(file.name)
-    setResumeStatus('Reading resume and detecting skills...')
-    try {
-      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-      const buffer = new Uint8Array(await file.arrayBuffer())
-      const pdf = await pdfjs.getDocument({ data: buffer, disableWorker: true } as Parameters<typeof pdfjs.getDocument>[0]).promise
-      let text = ''
-      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-        const page = await pdf.getPage(pageNumber)
-        const content = await page.getTextContent()
-        text += `${content.items.map((item) => ('str' in item ? item.str : '')).join(' ')} `
-      }
-      if (!text.trim()) {
-        setResumeStatus('No selectable text found. Running OCR on the resume...')
-        const { createWorker } = await import('tesseract.js')
-        const worker = await createWorker('eng')
-        try {
-          for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-            const page = await pdf.getPage(pageNumber)
-            const viewport = page.getViewport({ scale: 1.5 })
-            const canvas = document.createElement('canvas')
-            canvas.width = Math.ceil(viewport.width)
-            canvas.height = Math.ceil(viewport.height)
-            const context = canvas.getContext('2d')
-            if (!context) continue
-            await page.render({ canvasContext: context, viewport }).promise
-            const result = await worker.recognize(canvas)
-            text += `${result.data.text} `
-          }
-        } finally {
-          await worker.terminate()
-        }
-      }
-      const normalizedText = text.toLowerCase()
-      const knownSkills = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'SQL', 'PostgreSQL', 'Figma', 'UX Research', 'Product Management', 'Analytics', 'AWS', 'Docker', 'Java', 'Go']
-      const detected = knownSkills.filter((skill) => normalizedText.includes(skill.toLowerCase()))
-      if (!detected.length) {
-        setResumeStatus('Resume uploaded, but no supported skills were detected. Your usual job matches are still shown; add skills manually to improve them.')
-        return
-      }
-      setResumeSkills(detected)
-      setProfileSkillsInput((current) => Array.from(new Set([...current.split(',').map((skill) => skill.trim()).filter(Boolean), ...detected])).join(', '))
-      if (!profileRole.trim()) {
-        const role = ['product manager', 'designer', 'engineer', 'developer', 'analyst'].find((candidate) => normalizedText.includes(candidate))
-        if (role) setProfileRole(role.replace(/\b\w/g, (letter) => letter.toUpperCase()))
-      }
-      setResumeStatus(`${detected.length} skills detected. Save your profile to refresh job matches.`)
-    } catch (error) {
-      console.error('[v0] Resume PDF parsing failed:', error)
-      setResumeStatus('Resume uploaded, but OCR could not extract readable text. Your usual job matches are still shown; add skills manually or try a clearer PDF.')
-    } finally {
-      input.value = ''
-    }
-  }
-
   async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!userEmail || !profileName.trim()) return
@@ -300,11 +222,7 @@ export default function Page() {
     window.setTimeout(() => setProfileSaveState(''), 2400)
   }
 
-  const combinedSkills = useMemo(() => Array.from(new Set([
-    ...profileSkillsInput.split(',').map((skill) => skill.trim()).filter(Boolean),
-    ...resumeSkills,
-  ])).join(', '), [profileSkillsInput, resumeSkills])
-  const accountJobs = useMemo(() => userEmail ? getAccountJobs(userEmail, combinedSkills) : [], [userEmail, combinedSkills])
+  const accountJobs = useMemo(() => userEmail ? getAccountJobs(userEmail, profileSkillsInput) : [], [userEmail, profileSkillsInput])
   const profileScore = useMemo(() => {
     if (!accountJobs.length) return 0
     return Math.round(accountJobs.reduce((total, job) => total + job.match, 0) / accountJobs.length)
@@ -434,13 +352,11 @@ export default function Page() {
       <section className="content">
         <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Have a nice day, {profile.name} <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs" onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label={`Sign out ${profile.name}`}><span className="avatar small">{profile.initials}</span><ChevronDown size={14} /></button><button className="logout-button" onClick={handleLogout}>Log out</button><button className="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}><Menu size={19} /></button></div>{mobileMenuOpen && <nav className="mobile-menu" aria-label="Mobile navigation"><a href="#profile" onClick={() => setMobileMenuOpen(false)}><UserRound size={16} /> {profile.name}&apos;s profile <span>{profileScore}%</span></a><a href="#saved" onClick={() => setMobileMenuOpen(false)}><Bookmark size={16} /> Saved jobs <span>{savedJobs.length}</span></a><button type="button" onClick={handleLogout}><ArrowUpRight size={16} /> Log out</button></nav>}</header>
 
-        <section className="resume-panel" aria-labelledby="resume-title"><div><div className="heading-with-icon"><span className="spark-icon"><BriefcaseBusiness size={16} /></span><h2 id="resume-title">Build matches from your resume</h2></div><p>Upload a PDF and Target will combine detected resume skills with your profile skills to re-rank relevant jobs. If extraction fails, your usual matches stay available.</p>{resumeName ? <p className="resume-file" role="status">{resumeName}</p> : null}{resumeStatus ? <p className="resume-status" role="status">{resumeStatus}</p> : null}</div><label className="resume-upload"><input type="file" accept="application/pdf,.pdf" onChange={handleResumeUpload} /> <ArrowUpRight size={15} /> Upload PDF resume</label></section>
-
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><div className="hero-actions"><button className="saved-jobs-button" onClick={() => document.getElementById('saved')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Bookmark size={15} /> Saved jobs <span>{savedJobs.length}</span></button><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><Play size={15} fill="currentColor" /> {liveLoading ? 'Fetching live jobs...' : running ? 'Agents running...' : 'Run agents now'}</button></div></div>
 
         <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {running ? 'Running now' : 'Last run 8m ago'}</span></div><p>One main agent coordinating five specialist agents across your connected job platforms.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? `${visibleJobs.length} roles reviewed` : `Reviewing ${visibleJobs.length} roles`}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
 
-        <div className="section-title" id="matches"><div><h2>Top matches <span className="result-count">{visibleJobs.length} results</span></h2><p>Ranked by profile skills{resumeSkills.length ? ' and resume skills' : ''}, freshness, and trust signals for <strong>{userEmail}</strong>.</p></div><button className="filter-button"><Filter size={15} /> Filters <span className="filter-number">2</span></button></div>
+        <div className="section-title" id="matches"><div><h2>Top matches <span className="result-count">{visibleJobs.length} results</span></h2><p>Ranked by profile skills, freshness, and trust signals for <strong>{userEmail}</strong>.</p></div><button className="filter-button"><Filter size={15} /> Filters <span className="filter-number">2</span></button></div>
         <div className="control-strip" aria-label="Search quality and user controls"><span><Check size={14} /> {visibleJobs.length} unique roles</span><span><ShieldCheck size={14} /> Evidence-backed trust checks</span><span><Globe2 size={14} /> {sourceStats.length} sources</span><button type="button" onClick={() => setQuery('')}>Clear search</button></div>
         <div className="toolbar"><div className="search-box"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search roles, companies, skills..." aria-label="Search jobs" /></div><div className="tabs" role="tablist"><button className={activeTab === 'all' ? 'selected' : ''} onClick={() => setActiveTab('all')}>All jobs</button><button className={activeTab === 'verified' ? 'selected' : ''} onClick={() => setActiveTab('verified')}><ShieldCheck size={14} /> Verified <span>68</span></button><button className={activeTab === 'review' ? 'selected' : ''} onClick={() => setActiveTab('review')}><AlertTriangle size={14} /> Needs review <span>5</span></button></div><button className="sort-button"><ListFilter size={15} /> Best match <ChevronDown size={14} /></button></div>
 
