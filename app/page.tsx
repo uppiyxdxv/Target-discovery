@@ -308,7 +308,7 @@ export default function Page() {
     return (
       <main className="auth-shell">
         <section className="auth-card" aria-labelledby="login-title">
-          <div className="brand auth-brand"><span className="brand-mark"><Sparkles size={17} /></span><span>Scoutly</span></div>
+          <div className="brand auth-brand"><span className="brand-mark target-mark"><Target size={17} strokeWidth={2.5} /></span><span>Target</span></div>
           <div className="auth-icon"><ShieldCheck size={24} /></div>
           <p className="eyebrow">PRIVATE JOB SEARCH</p>
           <h1 id="login-title">{authMode === 'login' ? 'Sign in to your workspace' : 'Create your workspace'}</h1>
@@ -320,7 +320,7 @@ export default function Page() {
             <label htmlFor="password">Password</label>
             <input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" minLength={6} required />
             {loginError && <p className="auth-error" role="alert">{loginError}</p>}
-            <button className="auth-submit" type="submit" disabled={authSubmitting}>{authSubmitting ? 'Please wait...' : authMode === 'login' ? 'Continue to Scoutly' : 'Create account'} <ArrowUpRight size={15} /></button>
+            <button className="auth-submit" type="submit" disabled={authSubmitting}>{authSubmitting ? 'Please wait...' : authMode === 'login' ? 'Continue to Target' : 'Create account'} <ArrowUpRight size={15} /></button>
           </form>
           <button className="auth-switch" type="button" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setLoginError(''); setRegistrationSent(false) }}>
             {authMode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in'}
@@ -334,7 +334,7 @@ export default function Page() {
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark"><Sparkles size={17} /></span><span>Scoutly</span></div>
+        <div className="brand"><span className="brand-mark target-mark"><Target size={17} strokeWidth={2.5} /></span><span>Target</span></div>
         <div className="workspace"><div className="avatar">{profile.initials}</div><div><strong>{profile.name}&apos;s workspace</strong><span>Personal workspace</span></div><ChevronDown size={15} /></div>
         <nav className="nav-list" aria-label="Primary navigation">
           <a className="nav-item active" href="#overview" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}><Target size={17} /> Overview</a>

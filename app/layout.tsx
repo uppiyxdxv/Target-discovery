@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Scoutly — AI-powered job search',
+  title: 'Target — AI-powered job search',
   description: 'Find better-fit opportunities with coordinated job search agents and trust signals.',
   generator: 'v0.app',
   icons: {
