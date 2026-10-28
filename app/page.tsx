@@ -236,6 +236,27 @@ export default function Page() {
         const content = await page.getTextContent()
         text += `${content.items.map((item) => ('str' in item ? item.str : '')).join(' ')} `
       }
+      if (!text.trim()) {
+        setResumeStatus('No selectable text found. Running OCR on the resume...')
+        const { createWorker } = await import('tesseract.js')
+        const worker = await createWorker('eng')
+        try {
+          for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+            const page = await pdf.getPage(pageNumber)
+            const viewport = page.getViewport({ scale: 1.5 })
+            const canvas = document.createElement('canvas')
+            canvas.width = Math.ceil(viewport.width)
+            canvas.height = Math.ceil(viewport.height)
+            const context = canvas.getContext('2d')
+            if (!context) continue
+            await page.render({ canvasContext: context, viewport }).promise
+            const result = await worker.recognize(canvas)
+            text += `${result.data.text} `
+          }
+        } finally {
+          await worker.terminate()
+        }
+      }
       const normalizedText = text.toLowerCase()
       const knownSkills = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'SQL', 'PostgreSQL', 'Figma', 'UX Research', 'Product Management', 'Analytics', 'AWS', 'Docker', 'Java', 'Go']
       const detected = knownSkills.filter((skill) => normalizedText.includes(skill.toLowerCase()))
@@ -252,7 +273,7 @@ export default function Page() {
       setResumeStatus(`${detected.length} skills detected. Save your profile to refresh job matches.`)
     } catch (error) {
       console.error('[v0] Resume PDF parsing failed:', error)
-      setResumeStatus('Resume uploaded, but its text could not be extracted. Your usual job matches are still shown; add skills manually or try a text-based PDF.')
+      setResumeStatus('Resume uploaded, but OCR could not extract readable text. Your usual job matches are still shown; add skills manually or try a clearer PDF.')
     } finally {
       input.value = ''
     }
