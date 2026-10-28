@@ -230,7 +230,7 @@ export default function Page() {
     try {
       const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
       const buffer = new Uint8Array(await file.arrayBuffer())
-      const pdf = await pdfjs.getDocument({ data: buffer }).promise
+      const pdf = await pdfjs.getDocument({ data: buffer, disableWorker: true }).promise
       let text = ''
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber)
