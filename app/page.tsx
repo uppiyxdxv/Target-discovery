@@ -35,7 +35,7 @@ type Job = {
   title: string
   company: string
   location: string
-  source: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Wellfound' | 'Glassdoor'
+  source: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Wellfound' | 'Glassdoor' | 'Remotive' | 'Arbeitnow' | 'Jobicy'
   match: number
   trust: 'Verified' | 'Review'
   posted: string
@@ -104,6 +104,9 @@ function getSourceStats(accountJobs: Job[]) {
     { name: 'Indeed agent', detail: 'Searching global roles', icon: Search, color: 'green', count: `${accountJobs.filter((job) => job.source === 'Indeed').length} found` },
     { name: 'Wellfound agent', detail: 'Watching startup roles', icon: Sparkles, color: 'purple', count: `${accountJobs.filter((job) => job.source === 'Wellfound').length} found` },
     { name: 'Glassdoor agent', detail: 'Checking company signals', icon: ShieldCheck, color: 'pink', count: `${accountJobs.filter((job) => job.source === 'Glassdoor').length} found` },
+    { name: 'Remotive feed', detail: 'Live public remote jobs', icon: Globe2, color: 'blue', count: `${accountJobs.filter((job) => job.source === 'Remotive').length} found` },
+    { name: 'Arbeitnow feed', detail: 'Live public listings', icon: Globe2, color: 'green', count: `${accountJobs.filter((job) => job.source === 'Arbeitnow').length} found` },
+    { name: 'Jobicy feed', detail: 'Live public remote jobs', icon: Globe2, color: 'purple', count: `${accountJobs.filter((job) => job.source === 'Jobicy').length} found` },
   ]
 }
 
