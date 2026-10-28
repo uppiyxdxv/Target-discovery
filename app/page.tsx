@@ -40,7 +40,7 @@ type Job = {
   title: string
   company: string
   location: string
-  source: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Wellfound' | 'Glassdoor'
+  source: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Wellfound' | 'Glassdoor' | 'Remotive' | 'Arbeitnow' | 'Jobicy'
   match: number
   trust: 'Verified' | 'Review'
   posted: string
@@ -104,18 +104,22 @@ function dedupeJobs(jobs: Job[]) {
 
 function getSourceStats(accountJobs: Job[], savedJobs: Job[], applicationStatuses: Record<string, string>) {
   const sources = [
-    { source: 'LinkedIn', name: 'LinkedIn agent', detail: 'Scanning recommendations', icon: Link, color: 'blue' },
-    { source: 'Naukri', name: 'Naukri agent', detail: 'Checking new listings', icon: BriefcaseBusiness, color: 'orange' },
-    { source: 'Indeed', name: 'Indeed agent', detail: 'Searching global roles', icon: Search, color: 'green' },
-    { source: 'Wellfound', name: 'Wellfound agent', detail: 'Watching startup roles', icon: Sparkles, color: 'purple' },
-    { source: 'Glassdoor', name: 'Glassdoor agent', detail: 'Checking company signals', icon: ShieldCheck, color: 'pink' },
+    { source: 'Remotive', name: 'Remotive public feed', detail: 'Live public remote jobs', icon: Globe2, color: 'blue' },
+    { source: 'Arbeitnow', name: 'Arbeitnow public feed', detail: 'Live public job listings', icon: Globe2, color: 'green' },
+    { source: 'Jobicy', name: 'Jobicy public feed', detail: 'Live public remote jobs', icon: Globe2, color: 'purple' },
+    { source: 'LinkedIn', name: 'LinkedIn agent', detail: 'Official API not connected', icon: Link, color: 'blue' },
+    { source: 'Naukri', name: 'Naukri agent', detail: 'Official API not connected', icon: BriefcaseBusiness, color: 'orange' },
+    { source: 'Indeed', name: 'Indeed agent', detail: 'Official API not connected', icon: Search, color: 'green' },
+    { source: 'Wellfound', name: 'Wellfound agent', detail: 'Official API not connected', icon: Sparkles, color: 'purple' },
+    { source: 'Glassdoor', name: 'Glassdoor agent', detail: 'Official API not connected', icon: ShieldCheck, color: 'pink' },
   ] as const
   return sources.map(({ source, ...agent }) => {
     const sourceJobs = accountJobs.filter((job) => job.source === source)
     const tracked = savedJobs.filter((job) => job.source === source)
     const statuses = tracked.map((job) => applicationStatuses[`${job.title}-${job.company}`]).filter(Boolean)
     const statusSummary = ['Applied', 'Interview', 'Offer', 'Rejected'].filter((status) => statuses.includes(status)).map((status) => `${statuses.filter((value) => value === status).length} ${status.toLowerCase()}`).join(' · ')
-    return { ...agent, count: `${sourceJobs.length} found${tracked.length ? ` · ${tracked.length} tracked${statusSummary ? ` (${statusSummary})` : ''}` : ''}` }
+    const liveFeed = source === 'Remotive' || source === 'Arbeitnow' || source === 'Jobicy'
+    return { ...agent, count: liveFeed ? `${sourceJobs.length} found${tracked.length ? ` · ${tracked.length} tracked${statusSummary ? ` (${statusSummary})` : ''}` : ''}` : 'Not connected' }
   })
 }
 
@@ -370,7 +374,7 @@ export default function Page() {
         </nav>
         <div className="side-label">Your profile</div>
         <a className="nav-item" href="#profile"><UserRound size={17} /> {profile.name}&apos;s profile <span className="profile-score">{profileScore}%</span></a>
-        <div className="sidebar-bottom"><div className="side-label">Connected sources</div><div className="connected"><Link size={15} /> LinkedIn <span>Connected</span></div><div className="connected"><BriefcaseBusiness size={15} /> Naukri <span>Connected</span></div><div className="connected"><Search size={15} /> Indeed <span>Connected</span></div><div className="connected"><Sparkles size={15} /> Wellfound <span>Connected</span></div><div className="connected"><ShieldCheck size={15} /> Glassdoor <span>Connected</span></div><button className="help-link">? <span>Help center</span></button></div>
+        <div className="sidebar-bottom"><div className="side-label">Job sources</div><div className="connected"><Globe2 size={15} /> Remotive <span>Live public feed</span></div><div className="connected"><Globe2 size={15} /> Arbeitnow <span>Live public feed</span></div><div className="connected"><Globe2 size={15} /> Jobicy <span>Live public feed</span></div><div className="connected unavailable"><Link size={15} /> LinkedIn <span>Not connected</span></div><div className="connected unavailable"><BriefcaseBusiness size={15} /> Naukri <span>Not connected</span></div><div className="connected unavailable"><Search size={15} /> Indeed <span>Not connected</span></div><div className="connected unavailable"><Sparkles size={15} /> Wellfound <span>Not connected</span></div><div className="connected unavailable"><ShieldCheck size={15} /> Glassdoor <span>Not connected</span></div><button className="help-link">? <span>Help center</span></button></div>
       </aside>
 
       <section className="content">
