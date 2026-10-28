@@ -40,17 +40,28 @@ type Job = {
   warning?: string
 }
 
-const jobs: Job[] = [
+const jobTemplates: Job[] = [
   { title: 'Product Designer', company: 'Razorpay', location: 'Bengaluru · Hybrid', source: 'LinkedIn', match: 96, trust: 'Verified', posted: '2h ago', tags: ['Figma', 'UX Research'] },
   { title: 'Frontend Engineer', company: 'Myntra', location: 'Bengaluru · On-site', source: 'Naukri', match: 91, trust: 'Verified', posted: '5h ago', tags: ['React', 'TypeScript'] },
   { title: 'UX Research Intern', company: 'Growth Labs', location: 'Remote · India', source: 'LinkedIn', match: 84, trust: 'Review', posted: '1d ago', tags: ['User interviews', 'Internship'], warning: 'Requests payment for onboarding' },
   { title: 'Associate Product Manager', company: 'Zepto', location: 'Mumbai · Hybrid', source: 'Naukri', match: 78, trust: 'Verified', posted: '1d ago', tags: ['Product', 'Analytics'] },
 ]
 
-const sourceStats = [
-  { name: 'LinkedIn agent', detail: 'Scanning recommendations', icon: Link, color: 'blue', count: '42 found' },
-  { name: 'Naukri agent', detail: 'Checking new listings', icon: BriefcaseBusiness, color: 'orange', count: '31 found' },
-]
+function getAccountJobs(email: string): Job[] {
+  const seed = Array.from(email).reduce((total, character) => total + character.charCodeAt(0), 0)
+  const rotation = seed % jobTemplates.length
+  return [...jobTemplates.slice(rotation), ...jobTemplates.slice(0, rotation)].map((job, index) => ({
+    ...job,
+    match: Math.max(68, Math.min(98, job.match - ((seed + index * 3) % 8))),
+  }))
+}
+
+function getSourceStats(accountJobs: Job[]) {
+  return [
+    { name: 'LinkedIn agent', detail: 'Scanning recommendations', icon: Link, color: 'blue', count: `${accountJobs.filter((job) => job.source === 'LinkedIn').length} found` },
+    { name: 'Naukri agent', detail: 'Checking new listings', icon: BriefcaseBusiness, color: 'orange', count: `${accountJobs.filter((job) => job.source === 'Naukri').length} found` },
+  ]
+}
 
 export default function Page() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -134,6 +145,8 @@ export default function Page() {
     await createClient().auth.signOut()
     setUserEmail(null)
   }
+  const accountJobs = useMemo(() => userEmail ? getAccountJobs(userEmail) : [], [userEmail])
+  const sourceStats = useMemo(() => getSourceStats(accountJobs), [accountJobs])
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(72)
   const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'review'>('all')
@@ -154,7 +167,7 @@ export default function Page() {
     return () => window.clearInterval(timer)
   }, [running])
 
-  const filteredJobs = useMemo(() => jobs.filter((job) => {
+  const filteredJobs = useMemo(() => accountJobs.filter((job) => {
     const matchesTab = activeTab === 'all' || (activeTab === 'verified' ? job.trust === 'Verified' : job.trust === 'Review')
     const haystack = `${job.title} ${job.company} ${job.tags.join(' ')}`.toLowerCase()
     return matchesTab && haystack.includes(query.toLowerCase())
