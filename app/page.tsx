@@ -225,12 +225,11 @@ export default function Page() {
     }
 
     setResumeName(file.name)
-    setResumeSkills([])
     setResumeStatus('Reading resume and detecting skills...')
     try {
       const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
       const buffer = new Uint8Array(await file.arrayBuffer())
-      const pdf = await pdfjs.getDocument({ data: buffer, disableWorker: true }).promise
+      const pdf = await pdfjs.getDocument({ data: buffer, disableWorker: true } as Parameters<typeof pdfjs.getDocument>[0]).promise
       let text = ''
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber)
@@ -241,7 +240,7 @@ export default function Page() {
       const knownSkills = ['React', 'TypeScript', 'JavaScript', 'Node.js', 'Python', 'SQL', 'PostgreSQL', 'Figma', 'UX Research', 'Product Management', 'Analytics', 'AWS', 'Docker', 'Java', 'Go']
       const detected = knownSkills.filter((skill) => normalizedText.includes(skill.toLowerCase()))
       if (!detected.length) {
-        setResumeStatus('The PDF was read, but no supported skills were detected. Add skills manually below.')
+        setResumeStatus('Resume uploaded, but no supported skills were detected. Your usual job matches are still shown; add skills manually to improve them.')
         return
       }
       setResumeSkills(detected)
@@ -253,7 +252,7 @@ export default function Page() {
       setResumeStatus(`${detected.length} skills detected. Save your profile to refresh job matches.`)
     } catch (error) {
       console.error('[v0] Resume PDF parsing failed:', error)
-      setResumeStatus('The PDF could not be read. Use a text-based PDF or add skills manually below.')
+      setResumeStatus('Resume uploaded, but its text could not be extracted. Your usual job matches are still shown; add skills manually or try a text-based PDF.')
     } finally {
       input.value = ''
     }
@@ -414,7 +413,7 @@ export default function Page() {
       <section className="content">
         <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Have a nice day, {profile.name} <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs" onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label={`Sign out ${profile.name}`}><span className="avatar small">{profile.initials}</span><ChevronDown size={14} /></button><button className="logout-button" onClick={handleLogout}>Log out</button><button className="mobile-menu-button" type="button" aria-label="Open menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}><Menu size={19} /></button></div>{mobileMenuOpen && <nav className="mobile-menu" aria-label="Mobile navigation"><a href="#profile" onClick={() => setMobileMenuOpen(false)}><UserRound size={16} /> {profile.name}&apos;s profile <span>{profileScore}%</span></a><a href="#saved" onClick={() => setMobileMenuOpen(false)}><Bookmark size={16} /> Saved jobs <span>{savedJobs.length}</span></a><button type="button" onClick={handleLogout}><ArrowUpRight size={16} /> Log out</button></nav>}</header>
 
-        <section className="resume-panel" aria-labelledby="resume-title"><div><div className="heading-with-icon"><span className="spark-icon"><BriefcaseBusiness size={16} /></span><h2 id="resume-title">Build matches from your resume</h2></div><p>Upload a PDF and Target will combine detected resume skills with your profile skills to re-rank relevant jobs.</p>{resumeName ? <p className="resume-file" role="status">{resumeName}</p> : null}{resumeStatus ? <p className="resume-status" role="status">{resumeStatus}</p> : null}</div><label className="resume-upload"><input type="file" accept="application/pdf,.pdf" onChange={handleResumeUpload} /> <ArrowUpRight size={15} /> Upload PDF resume</label></section>
+        <section className="resume-panel" aria-labelledby="resume-title"><div><div className="heading-with-icon"><span className="spark-icon"><BriefcaseBusiness size={16} /></span><h2 id="resume-title">Build matches from your resume</h2></div><p>Upload a PDF and Target will combine detected resume skills with your profile skills to re-rank relevant jobs. If extraction fails, your usual matches stay available.</p>{resumeName ? <p className="resume-file" role="status">{resumeName}</p> : null}{resumeStatus ? <p className="resume-status" role="status">{resumeStatus}</p> : null}</div><label className="resume-upload"><input type="file" accept="application/pdf,.pdf" onChange={handleResumeUpload} /> <ArrowUpRight size={15} /> Upload PDF resume</label></section>
 
         <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><div className="hero-actions"><button className="saved-jobs-button" onClick={() => document.getElementById('saved')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Bookmark size={15} /> Saved jobs <span>{savedJobs.length}</span></button><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><Play size={15} fill="currentColor" /> {liveLoading ? 'Fetching live jobs...' : running ? 'Agents running...' : 'Run agents now'}</button></div></div>
 
