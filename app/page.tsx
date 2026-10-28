@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Bot,
   Bookmark,
+  BriefcaseBusiness,
   Check,
   ChevronDown,
   Clock3,
