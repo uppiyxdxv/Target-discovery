@@ -154,7 +154,24 @@ export default function Page() {
     setUserEmail(null)
   }
   const accountJobs = useMemo(() => userEmail ? getAccountJobs(userEmail) : [], [userEmail])
+  const [liveJobs, setLiveJobs] = useState<Job[]>([])
+  const [liveLoading, setLiveLoading] = useState(false)
   const [savedJobs, setSavedJobs] = useState<Job[]>([])
+
+  async function refreshLiveJobs() {
+    setLiveLoading(true)
+    try {
+      const response = await fetch('/api/jobs?q=product%20designer', { cache: 'no-store' })
+      if (response.ok) {
+        const payload = await response.json()
+        setLiveJobs(payload.jobs || [])
+      }
+    } finally {
+      setLiveLoading(false)
+    }
+  }
+
+  const visibleJobs = liveJobs.length > 0 ? liveJobs : accountJobs
 
   useEffect(() => {
     if (!userEmail) {
@@ -163,9 +180,9 @@ export default function Page() {
     }
     const savedKey = `scoutly-saved:${userEmail.toLowerCase()}`
     const savedTitles = window.sessionStorage.getItem(savedKey)
-    const saved = savedTitles ? accountJobs.filter((job) => savedTitles.split('|').includes(`${job.title}|${job.company}`)) : []
+    const saved = savedTitles ? visibleJobs.filter((job) => savedTitles.split('|').includes(`${job.title}|${job.company}`)) : []
     setSavedJobs(saved)
-  }, [userEmail, accountJobs])
+  }, [userEmail, visibleJobs])
 
   function toggleSavedJob(job: Job) {
     if (!userEmail) return
@@ -176,7 +193,7 @@ export default function Page() {
     window.sessionStorage.setItem(`scoutly-saved:${userEmail.toLowerCase()}`, next.map((saved) => `${saved.title}|${saved.company}`).join('|'))
   }
 
-  const sourceStats = useMemo(() => getSourceStats(accountJobs), [accountJobs])
+  const sourceStats = useMemo(() => getSourceStats(visibleJobs), [visibleJobs])
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(72)
   const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'review'>('all')
@@ -197,7 +214,7 @@ export default function Page() {
     return () => window.clearInterval(timer)
   }, [running])
 
-  const filteredJobs = useMemo(() => accountJobs.filter((job) => {
+  const filteredJobs = useMemo(() => visibleJobs.filter((job) => {
     const matchesTab = activeTab === 'all' || (activeTab === 'verified' ? job.trust === 'Verified' : job.trust === 'Review')
     const haystack = `${job.title} ${job.company} ${job.tags.join(' ')}`.toLowerCase()
     return matchesTab && haystack.includes(query.toLowerCase())
@@ -251,13 +268,13 @@ export default function Page() {
       </aside>
 
       <section className="content">
-        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, {profile.name} <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs" onClick={() => { setProgress(0); setRunning(true) }}><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label={`Sign out ${profile.name}`}><span className="avatar small">{profile.initials}</span><ChevronDown size={14} /></button><button className="logout-button" onClick={handleLogout}>Log out</button></div></header>
+        <header className="topbar"><div><p className="eyebrow">TUESDAY, OCTOBER 28, 2026</p><h1>Good morning, {profile.name} <span className="wave">✦</span></h1><p className="signed-in-as">Signed in as {userEmail}</p></div><div className="top-actions"><button className="icon-btn" aria-label="Refresh jobs" onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><RefreshCw size={17} /></button><button className="user-button" onClick={handleLogout} aria-label={`Sign out ${profile.name}`}><span className="avatar small">{profile.initials}</span><ChevronDown size={14} /></button><button className="logout-button" onClick={handleLogout}>Log out</button></div></header>
 
-        <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><div className="hero-actions"><button className="saved-jobs-button" onClick={() => document.getElementById('saved')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Bookmark size={15} /> Saved jobs <span>{savedJobs.length}</span></button><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true) }}><Play size={15} fill="currentColor" /> {running ? 'Agents running...' : 'Run agents now'}</button></div></div>
+        <div className="hero-row"><div><h2>Your job search, on autopilot.</h2><p>Scoutly&apos;s agents are finding roles that fit your goals and keeping the noise out.</p><p className="account-context"><UserRound size={14} /> Personalised for <strong>{userEmail}</strong></p></div><div className="hero-actions"><button className="saved-jobs-button" onClick={() => document.getElementById('saved')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Bookmark size={15} /> Saved jobs <span>{savedJobs.length}</span></button><button className={`run-button ${running ? 'is-running' : ''}`} onClick={() => { setProgress(0); setRunning(true); refreshLiveJobs() }}><Play size={15} fill="currentColor" /> {liveLoading ? 'Fetching live jobs...' : running ? 'Agents running...' : 'Run agents now'}</button></div></div>
 
-        <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {running ? 'Running now' : 'Last run 8m ago'}</span></div><p>One main agent coordinating five specialist agents across your connected job platforms.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? '73 roles reviewed' : 'Reviewing 73 roles'}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
+        <section className="agent-panel" id="agents"><div className="panel-heading"><div><div className="heading-with-icon"><span className="spark-icon"><Zap size={16} fill="currentColor" /></span><h3>Agent activity</h3><span className="status-pill"><span className="status-dot" /> {running ? 'Running now' : 'Last run 8m ago'}</span></div><p>One main agent coordinating five specialist agents across your connected job platforms.</p></div><button className="more-button">•••</button></div><div className="agent-grid"><div className="main-agent"><div className="agent-icon main"><Bot size={22} /></div><div className="agent-copy"><strong>Scoutly main agent</strong><span>Coordinating search and evaluating matches</span><div className="progress-track"><div className="progress-fill" style={{ width: `${progress}%` }} /></div><div className="progress-meta"><span>{progress === 100 ? 'Completed just now' : `${progress}% complete`}</span><span>{progress === 100 ? `${visibleJobs.length} roles reviewed` : `Reviewing ${visibleJobs.length} roles`}</span></div></div></div><div className="source-agents">{sourceStats.map(({ name, detail, icon: Icon, color, count }) => <div className="source-agent" key={name}><div className={`agent-icon ${color}`}><Icon size={18} /></div><div className="agent-copy"><strong>{name}</strong><span>{detail}</span><b>{count}</b></div><Check className="done-check" size={16} /></div>)}</div></div></section>
 
-        <div className="section-title" id="matches"><div><h2>Top matches <span className="result-count">73 results</span></h2><p>Ranked by fit, freshness, and trust signals for <strong>{userEmail}</strong>.</p></div><button className="filter-button"><Filter size={15} /> Filters <span className="filter-number">2</span></button></div>
+        <div className="section-title" id="matches"><div><h2>Top matches <span className="result-count">{visibleJobs.length} results</span></h2><p>Ranked by fit, freshness, and trust signals for <strong>{userEmail}</strong>.</p></div><button className="filter-button"><Filter size={15} /> Filters <span className="filter-number">2</span></button></div>
         <div className="toolbar"><div className="search-box"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search roles, companies, skills..." aria-label="Search jobs" /></div><div className="tabs" role="tablist"><button className={activeTab === 'all' ? 'selected' : ''} onClick={() => setActiveTab('all')}>All jobs</button><button className={activeTab === 'verified' ? 'selected' : ''} onClick={() => setActiveTab('verified')}><ShieldCheck size={14} /> Verified <span>68</span></button><button className={activeTab === 'review' ? 'selected' : ''} onClick={() => setActiveTab('review')}><AlertTriangle size={14} /> Needs review <span>5</span></button></div><button className="sort-button"><ListFilter size={15} /> Best match <ChevronDown size={14} /></button></div>
 
         <div className="job-list">{filteredJobs.map((job) => <article className="job-card" key={`${job.title}-${job.company}`} onClick={() => setSelectedJob(job)}><div className="company-logo" aria-label={`${job.company} logo`} title={`${job.company} logo`}>{job.company.slice(0, 1)}</div><div className="job-main"><div className="job-title-row"><div><h3>{job.title}</h3><p>{job.company} <span>·</span> {job.location}</p></div><span className={`match-score ${job.match < 80 ? 'yellow' : ''}`}>{job.match}% fit</span></div><div className="job-tags">{job.tags.map((tag) => <span key={tag}>{tag}</span>)}<span className={`source-tag ${job.source === 'LinkedIn' ? 'linkedin-tag' : 'naukri-tag'}`}>{job.source === 'LinkedIn' ? <Link size={12} /> : <BriefcaseBusiness size={12} />} {job.source}</span></div></div><div className="job-side"><button className={`save-job ${savedJobs.some((saved) => saved.title === job.title && saved.company === job.company) ? 'saved' : ''}`} onClick={(event) => { event.stopPropagation(); toggleSavedJob(job) }} aria-label={`${savedJobs.some((saved) => saved.title === job.title && saved.company === job.company) ? 'Remove' : 'Save'} ${job.title}`}>{savedJobs.some((saved) => saved.title === job.title && saved.company === job.company) ? 'Saved' : 'Save'}</button><span className={`trust ${job.trust === 'Review' ? 'review' : ''}`}>{job.trust === 'Verified' ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />} {job.trust}</span><span className="posted"><Clock3 size={13} /> {job.posted}</span><a className="apply-link" href={job.applyUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Apply on {job.source} <ArrowUpRight size={14} /></a><ArrowUpRight size={17} className="open-arrow" /></div></article>)}</div>\n\n        <section className="saved-panel" id="saved" aria-labelledby="saved-title"><div className="section-title"><div><h2 id="saved-title">Saved jobs <span className="result-count">{savedJobs.length}</span></h2><p>Saved for {userEmail}. These are scoped to this signed-in workspace.</p></div></div>{savedJobs.length ? <div className="job-list saved-list">{savedJobs.map((job) => <article className="job-card" key={`saved-${job.title}-${job.company}`} onClick={() => setSelectedJob(job)}><div className="company-logo">{job.company.slice(0, 1)}</div><div className="job-main"><div className="job-title-row"><div><h3>{job.title}</h3><p>{job.company} <span>·</span> {job.location}</p></div><span className="source-tag">{job.source}</span></div></div><button className="save-job saved" onClick={(event) => { event.stopPropagation(); toggleSavedJob(job) }}>Saved</button></article>)}</div> : <div className="empty-state"><div className="empty-state-icon"><Link size={19} /></div><div><strong>No saved jobs in this workspace yet</strong><p>Save a job from the matches above. LinkedIn and Naukri saved items cannot be read from email login alone without their approved API connection.</p></div></div>}</section>\n\n        <footer className="footer-note"><ShieldCheck size={15} /> Trust scores are signals, not guarantees. Always verify details on the original posting.</footer>
