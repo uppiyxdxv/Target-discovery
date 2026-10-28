@@ -115,11 +115,7 @@ function getSourceStats(accountJobs: Job[], savedJobs: Job[], applicationStatuse
   ] as const
   return sources.map(({ source, ...agent }) => {
     const sourceJobs = accountJobs.filter((job) => job.source === source)
-    const tracked = savedJobs.filter((job) => job.source === source)
-    const statuses = tracked.map((job) => applicationStatuses[`${job.title}-${job.company}`]).filter(Boolean)
-    const statusSummary = ['Applied', 'Interview', 'Offer', 'Rejected'].filter((status) => statuses.includes(status)).map((status) => `${statuses.filter((value) => value === status).length} ${status.toLowerCase()}`).join(' · ')
-    const liveFeed = source === 'Remotive' || source === 'Arbeitnow' || source === 'Jobicy'
-    return { ...agent, count: liveFeed ? `${sourceJobs.length} found${tracked.length ? ` · ${tracked.length} tracked${statusSummary ? ` (${statusSummary})` : ''}` : ''}` : 'Not connected' }
+    return { ...agent, count: `${sourceJobs.length} jobs found` }
   })
 }
 
